@@ -6,6 +6,7 @@ use METAR\Part\QNH;
 use METAR\Part\Temperature;
 use METAR\Part\Wind;
 use METAR\Unit\Speed;
+use JsonSerializable;
 
 /**
  * METAR - class for parsing METAR messages
@@ -13,54 +14,62 @@ use METAR\Unit\Speed;
  * Licence: MIT
  * Author: Jerzy Zawadzki
  **/
-class Message
+class Message implements JsonSerializable
 {
-
-    protected $code, $location, $time, $day;
+    protected $code;
+    protected $location;
+    protected $time;
+    protected $day;
     protected $auto = false;
-    protected $cloudCover = Array();
-    protected $runways = Array();
-    protected $weather = Array();
-    protected $QNH, $dewPoint, $temperature, $regExpWeather, $windSpeedDirectionVariable, $windDirectionVariable, $visibility;
+    protected $cloudCover = array();
+    protected $runways = array();
+    protected $weather = array();
+    protected $QNH;
+    protected $dewPoint;
+    protected $temperature;
+    protected $regExpWeather;
+    protected $windSpeedDirectionVariable;
+    protected $windDirectionVariable;
+    protected $visibility;
     /**
      * @var Wind
      */
     protected $wind;
-    protected $texts = Array(
-        'MI' => 'Shallow',
-        'PR' => 'Partial',
-        'BC' => 'Low drifting',
-        'BL' => 'Blowing',
-        'SH' => 'Showers',
-        'TS' => 'Thunderstorm',
-        'FZ' => 'Freezing',
-        'DZ' => 'Drizzle',
-        'RA' => 'Rain',
-        'SN' => 'Snow',
-        'SG' => 'Snow Grains',
-        'IC' => 'Ice crystals',
-        'PL' => 'Ice pellets',
-        'GR' => 'Hail',
-        'GS' => 'Small hail',
-        'UP' => 'Unknown',
-        'BR' => 'Mist',
-        'FG' => 'Fog',
-        'FU' => 'Smoke',
-        'VA' => 'Volcanic ash',
-        'DU' => 'Widespread dust',
-        'SA' => 'Sand',
-        'HZ' => 'Haze',
-        'PY' => 'Spray',
-        'PO' => 'Well developed dust / sand whirls',
-        'SQ' => 'Squalls',
-        'FC' => 'Funnel clouds inc tornadoes or waterspouts',
-        'SS' => 'Sandstorm',
-        'DS' => 'Duststorm'
+    protected $texts = array(
+        'MI' => 'Mince',
+        'PR' => 'Partiel',
+        'BC' => 'Bancs',
+        'BL' => 'Chasse haute',
+        'SH' => 'Averse',
+        'TS' => 'Orage',
+        'FZ' => 'Se congelant',
+        'DZ' => 'Bruine',
+        'RA' => 'PLuie',
+        'SN' => 'Neige',
+        'SG' => 'Neige en grains',
+        'IC' => 'Cristaux de glace',
+        'PL' => 'Granules de glace',
+        'GR' => 'Grêle',
+        'GS' => 'Grésil',
+        'UP' => 'Précipitation enconnue',
+        'BR' => 'Brume',
+        'FG' => 'Brouillard',
+        'FU' => 'Fumée',
+        'VA' => 'Cendres volcaniques',
+        'DU' => 'Poussière',
+        'SA' => 'Sable',
+        'HZ' => 'Brume sèche',
+        'PY' => 'Vaporisateur',
+        'PO' => 'Tourbillon de poussière',
+        'SQ' => 'Lignes de grains',
+        'FC' => 'Trombe',
+        'SS' => 'Tempête de sable',
+        'DS' => 'Tempête de poussière'
     );
 
     public function __construct($code)
     {
-        $this->code  = $code;
+        $this->code = $code;
         $this->readFromCode($code);
     }
 
@@ -71,11 +80,12 @@ class Message
 
     protected function readFromCode($code)
     {
-        $codes               = implode('|', array_keys($this->texts));
-        $this->regExpWeather = '#^(\+|\-|VC)?(' . $codes . ')(' . $codes . ')?$#';
+        $codes = implode('|', array_keys($this->texts));
+        $this->regExpWeather =
+            '#^(\+|\-|VC)?(' . $codes . ')(' . $codes . ')?$#';
 
         $pieces = explode(' ', $code);
-        $pos    = 0;
+        $pos = 0;
         if ($pieces[0] == 'METAR') {
             $pos++;
         }
@@ -85,12 +95,13 @@ class Message
         } // skip COR and similar
         $this->setLocation($pieces[$pos]);
         $pos++;
-        $this->setDayOfMonth($pieces[$pos]{0} . $pieces[$pos]{1});
+        $this->setDayOfMonth($pieces[$pos][0] . $pieces[$pos][1]);
         $this->setZuluTime(substr($pieces[$pos], 2, 4));
         $c = count($pieces);
         for ($pos++; $pos < $c; $pos++) {
             $piece = $pieces[$pos];
-            if ($piece == "RMK") { // we are not interested in remarks
+            if ($piece == "RMK") {
+                // we are not interested in remarks
                 break;
             }
             $this->checkFormat($piece);
@@ -100,32 +111,41 @@ class Message
     protected function checkForWindSpeed($code)
     {
         //WEATHER dddssKT or dddssGggKT
-        if (!preg_match('#^([0-9]{3})([0-9]{2})(G([0-9]{2}))?(KT|MPS)$#', $code, $matches)) {
+        if (
+            !preg_match(
+                '#^([0-9]{3})([0-9]{2})(G([0-9]{2}))?(KT|MPS)$#',
+                $code,
+                $matches
+            )
+        ) {
             return false;
         }
         $this->wind->setDirection($matches[1]);
         $this->wind->setSpeed($matches[2], $matches[5]);
         if ($matches[3]) {
-            $this->wind->setGusts(new Speed($matches[4], $matches[5] == 'KT' ? 'kt' : 'm/s'));
+            $this->wind->setGusts(
+                new Speed($matches[4], $matches[5] == 'KT' ? 'kt' : 'm/s')
+            );
         }
         return true;
     }
 
     protected function checkForTemperature($code)
     {
-        if (!preg_match('#^(M?[0-9]{2,})/(M?[0-9]{2,})$#', $code, $matches)) { //TEMP/DEW TT/DD negative M03
+        if (!preg_match('#^(M?[0-9]{2,})/(M?[0-9]{2,})$#', $code, $matches)) {
+            //TEMP/DEW TT/DD negative M03
             return false;
         }
-        $temp = (float)$matches[1];
-        if ($matches[1]{0} == 'M') {
-            $temp = ((float)substr($matches[1], 1)) * -1;
+        $temp = (float) $matches[1];
+        if ($matches[1][0] == 'M') {
+            $temp = ((float) substr($matches[1], 1)) * -1;
         }
 
         $this->temperature = new Temperature($temp);
 
-        $dew = (float)$matches[2];
-        if ($matches[2]{0} == 'M') {
-            $dew = ((float)substr($matches[2], 1)) * -1;
+        $dew = (float) $matches[2];
+        if ($matches[2][0] == 'M') {
+            $dew = ((float) substr($matches[2], 1)) * -1;
         }
         $this->dewPoint = new Temperature($dew);
 
@@ -134,10 +154,14 @@ class Message
 
     protected function checkForQNH($code)
     {
-        if (!preg_match('#^(A|Q)([0-9]{4})$#', $code, $matches)) { //QNH
+        if (!preg_match('#^(A|Q)([0-9]{4})$#', $code, $matches)) {
+            //QNH
             return false;
         }
-        $this->QNH = new QNH($matches[1] == 'Q' ? $matches[2] : ($matches[2] / 100), $matches[1] == 'Q' ? 'hPa' : 'inHg');
+        $this->QNH = new QNH(
+            $matches[1] == 'Q' ? $matches[2] : $matches[2] / 100,
+            $matches[1] == 'Q' ? 'hPa' : 'inHg'
+        );
         return true;
     }
 
@@ -146,7 +170,7 @@ class Message
         if (!preg_match('#^([0-9]{3})V([0-9]{3})$#', $code, $matches)) {
             return false;
         }
-        $this->setWindDirectionVariable(Array($matches[1], $matches[2]));
+        $this->setWindDirectionVariable(array($matches[1], $matches[2]));
         return true;
     }
 
@@ -163,8 +187,7 @@ class Message
     {
         if (preg_match('#^([0-9]{4})|(([0-9]{1,4})SM)$#', $code, $matches)) {
             if (isset($matches[3]) && strlen($matches[3]) > 0) {
-
-                $this->setVisibility((float)$matches[3] * 1609.34);
+                $this->setVisibility((float) $matches[3] * 1609.34);
             } else {
                 if ($matches[1] == '9999') {
                     $this->setVisibility('> 10000');
@@ -185,25 +208,43 @@ class Message
 
     protected function checkForCloudCoverage($code)
     {
-        if (!preg_match('#^(SKC|CLR|FEW|SCT|BKN|OVC|VV)([0-9]{3})(CB|TCU|CU|CI)?$#', $code, $matches)) {
+        if (
+            !preg_match(
+                '#^(SKC|CLR|FEW|SCT|BKN|OVC|VV)([0-9]{3})(CB|TCU|CU|CI)?$#',
+                $code,
+                $matches
+            )
+        ) {
             return false;
         }
-        $this->addCloudCover($matches[1], ((float)$matches[2]) * 100, isset($matches[3]) ? $matches[3] : '');
+        $this->addCloudCover(
+            $matches[1],
+            ((float) $matches[2]) * 100,
+            isset($matches[3]) ? $matches[3] : ''
+        );
         return true;
-
     }
 
     protected function checkForRVR($code)
     {
-        if (!preg_match('#^(R[A-Z0-9]{2,3})/([0-9]{4})(V([0-9]{4}))?(FT)?$#', $code, $matches)) {
+        if (
+            !preg_match(
+                '#^(R[A-Z0-9]{2,3})/([0-9]{4})(V([0-9]{4}))?(FT)?$#',
+                $code,
+                $matches
+            )
+        ) {
             return false;
         }
 
-        $range = array('exact' => (float)$matches[2], 'unit' => isset($matches[5]) ? 'FT' : 'M');
+        $range = array(
+            'exact' => (float) $matches[2],
+            'unit' => isset($matches[5]) ? 'FT' : 'M'
+        );
         if (isset($matches[3])) {
-            $range = Array(
-                'from' => (float)$matches[2],
-                'to'   => (float)$matches[4],
+            $range = array(
+                'from' => (float) $matches[2],
+                'to' => (float) $matches[4],
                 'unit' => isset($matches[5]) ? 'FT' : 'M'
             );
         }
@@ -216,7 +257,7 @@ class Message
         if (!preg_match($this->regExpWeather, $code, $matches)) {
             return false;
         }
-        $text = Array();
+        $text = array();
         switch ($matches[1]) {
             case '+':
                 $text[] = 'Heavy';
@@ -251,7 +292,6 @@ class Message
 
     protected function checkFormat($code)
     {
-
         if ($this->checkForAutoRemark($code)) {
             return;
         }
@@ -306,7 +346,11 @@ class Message
 
     protected function addCloudCover($type, $level, $significant)
     {
-        $this->cloudCover[] = Array('type' => $type, 'level' => $level, 'significant' => $significant);
+        $this->cloudCover[] = array(
+            'type' => $type,
+            'level' => $level,
+            'significant' => $significant
+        );
     }
 
     public function getCloudCover()
@@ -326,7 +370,7 @@ class Message
 
     protected function setWindSpeedVariable($val)
     {
-        $this->windSpeedDirectionVariable = (float)$val;
+        $this->windSpeedDirectionVariable = (float) $val;
     }
 
     public function getWindSpeedVariable()
@@ -429,4 +473,17 @@ class Message
         $this->time = $time;
     }
 
+    public function toJson()
+    {
+        return [
+            'location' => $this->getLocation(),
+            'day_of_month' => $this->getDayOfMonth(),
+            'hour' => $this->getZuluTime(),
+            'temperature' => $this->getTemperature()->toUnit('C'),
+            'dew_point' => $this->getDewPoint()->toUnit('C'),
+            'pression' => (int) $this->message->getQNH()->toUnit('hPa'),
+            'wind_direction' => $this->getWindDirection(),
+            'wind_speed' => $this->message->getWindSpeed()->toUnit('kmh')
+        ];
+    }
 }
