@@ -1,15 +1,22 @@
 {
-    "name": "jzawadzki/metar-php",
-    "license": "MIT",
-    "description": "lightweight library for decoding METAR messages",
-    "authors": [
-        {
-            "name": "Jerzy Zawadzki",
-            "email": "zawadzki.jerzy@gmail.com",
-            "homepage": "http://github.com/jzawadzki"
-        }
-    ],
-    "autoload": {
-        "psr-4": {"METAR\\": "src/"}
+  "name": "mathieulesniak/metar-php",
+  "license": "MIT",
+  "description": "lightweight library for decoding METAR messages",
+  "authors": [
+    {
+      "name": "Mathieu LESNIAK",
+      "email": "mathieu@lesniak.fr",
+      "homepage": "https://www.lesniak.fr"
+    },
+    {
+      "name": "Jerzy Zawadzki",
+      "email": "zawadzki.jerzy@gmail.com",
+      "homepage": "http://github.com/jzawadzki"
     }
+  ],
+  "autoload": {
+    "psr-4": {
+      "METAR\\": "src/"
+    }
+  }
 }
