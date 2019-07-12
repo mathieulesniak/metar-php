@@ -44,7 +44,7 @@ class Message implements JsonSerializable
         'TS' => 'Orage',
         'FZ' => 'Se congelant',
         'DZ' => 'Bruine',
-        'RA' => 'PLuie',
+        'RA' => 'Pluie',
         'SN' => 'Neige',
         'SG' => 'Neige en grains',
         'IC' => 'Cristaux de glace',
@@ -473,7 +473,7 @@ class Message implements JsonSerializable
         $this->time = $time;
     }
 
-    public function toJson()
+    public function jsonSerialize()
     {
         return [
             'location' => $this->getLocation(),
@@ -481,9 +481,13 @@ class Message implements JsonSerializable
             'hour' => $this->getZuluTime(),
             'temperature' => $this->getTemperature()->toUnit('C'),
             'dew_point' => $this->getDewPoint()->toUnit('C'),
-            'pression' => (int) $this->message->getQNH()->toUnit('hPa'),
+            'pression' => (int) $this->getQNH()->toUnit('hPa'),
             'wind_direction' => $this->getWindDirection(),
-            'wind_speed' => $this->message->getWindSpeed()->toUnit('kmh')
+            'wind_speed' => $this->getWindSpeed()->toUnit('km/h'),
+            'visibility' => $this->getVisibility(),
+            'weather' => $this->getWeather(),
+            'clouds' => $this->getCloudCover(),
+            'icon' => ''
         ];
     }
 }
